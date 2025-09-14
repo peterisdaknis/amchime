@@ -107,11 +107,25 @@
       const done = () => setStatus('Chime finished.');
 
       const now = new Date();
+      console.log('Calling playTimeAndDeploymentID', { latNum, lonNum, depArr });
+
       if (depArr) {
-        connector.playTimeAndDeploymentID(now, depArr, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
-      } else {
-        connector.playTime(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
-      }
+  connector.playTimeAndDeploymentID(
+    now,
+    hasLatLon ? latNum : null,
+    hasLatLon ? lonNum : null,
+    depArr,
+    done
+  );
+} else {
+  connector.playTime(
+    now,
+    hasLatLon ? latNum : null,
+    hasLatLon ? lonNum : null,
+    done
+  );
+}
+
     }catch(e){
       console.error(e);
       setStatus('Error while playing chime: ' + e.message);
