@@ -27,39 +27,32 @@
 <div class="hint" id="status"></div>
 
 <script>
-  // --- Helpers ---
-  const qs = new URLSearchParams(location.search);
+  // Read query string (?lat=...&lon=...&deployment=...)
+const qs = new URLSearchParams(location.search);
+const lat0 = qs.get('lat') ?? qs.get('latitude');
+const lon0 = qs.get('lon') ?? qs.get('lng') ?? qs.get('longitude');
+const dep0 = qs.get('deployment') ?? qs.get('dep') ?? qs.get('deployment_id');
 
-  function setStatus(msg){ document.getElementById('status').textContent = msg || ''; }
+// Accept commas but always display with a dot and 6 decimals
+function toFixed6Dot(v){
+  const n = Number(String(v ?? '').trim().replace(',', '.'));
+  return Number.isFinite(n) ? n.toFixed(6) : '';
+}
+if (lat0 != null) lat.value = toFixed6Dot(lat0);
+if (lon0 != null) lon.value = toFixed6Dot(lon0);
+if (dep0) dep.value = dep0;
 
-  // Accept commas as decimal separators and sanitize spaces
-  function parseNumberLike(inputEl){
-    const raw = (inputEl.value || '').trim().replace(',', '.');
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : NaN;
-  }
-
-  // Prefill from query string
-  const lat0 = qs.get('lat') ?? qs.get('latitude');
-  const lon0 = qs.get('lon') ?? qs.get('lng') ?? qs.get('longitude');
-  const dep0 = qs.get('deployment') ?? qs.get('dep') ?? qs.get('deployment_id');
-  if (lat0) lat.value = lat0;
-  if (lon0) lon.value = lon0;
-  if (dep0) dep.value = dep0;
-
-  function bigIntTo8Bytes(x){
-    let n = BigInt(x);
-    const out = Array(8).fill(0);
-    for (let i=7; i>=0; i--){ out[i] = Number(n & 0xFFn); n >>= 8n; }
-    return out;
-  }
-  function parseDeployment(s){
-    if (!s) return null;
-    s = s.trim();
-    if (/^0x[0-9a-f]+$/i.test(s)) return bigIntTo8Bytes(BigInt(s));
-    if (/^[0-9]+$/.test(s))       return bigIntTo8Bytes(s);
-    return null;
-  }
+// Keep the parser tolerant to commas, but we’ll reformat on blur
+function parseNumberLike(inputEl){
+  const raw = (inputEl.value || '').trim().replace(',', '.');
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : NaN;
+}
+// Reformat to 6 decimals with dot whenever the user leaves the field
+['blur','change'].forEach(ev => {
+  lat.addEventListener(ev, () => { const n = parseNumberLike(lat); if (Number.isFinite(n)) lat.value = n.toFixed(6); });
+  lon.addEventListener(ev, () => { const n = parseNumberLike(lon); if (Number.isFinite(n)) lon.value = n.toFixed(6); });
+});
 
   // --- Test audio (plain beep) ---
   document.getElementById('test').addEventListener('click', async () => {
