@@ -18,6 +18,10 @@
   ul{margin:8px 0 0 22px;padding:0}
   strong{font-weight:600}
   .muted{opacity:.7}
+  pre{background:#0b1020;color:#e6edf3;padding:12px;border-radius:10px;overflow:auto}
+  code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+  a{color:#2563eb;text-decoration:none}
+  a:hover{text-decoration:underline}
 </style>
 
 <!-- AudioMoth chime library files (keep these filenames exactly) -->
@@ -25,7 +29,7 @@
 <script src="./AudioMothChimeConnector.js"></script>
 
 <div class="top">
-  <img src="./logo.png" alt="Logo" style="width:45px;height:auto;display:block" />
+  <img src="./logo.png" alt="Logo" style="width:30px;height:auto;display:block" />
   <h1>Mergin Maps AudioMoth Chime v0.1</h1>
 </div>
 
@@ -53,6 +57,38 @@
   <button id="play">Atskaņot</button>
 </div>
 <div class="hint" id="status"></div>
+
+<!-- INFO / ATSAUCES & QGIS INSTRUKCIJA -->
+<div class="card" style="margin-top:14px">
+  <h2 style="font-size:1.05rem;margin:0 0 8px">Atsauces</h2>
+  <ul>
+    <li>AudioMoth Chime (repozitorijs): <a href="https://github.com/OpenAcousticDevices/AudioMoth-Chime" target="_blank" rel="noopener">github.com/OpenAcousticDevices/AudioMoth-Chime</a></li>
+    <li>JS faili izmantoti šeit: <code>AudioMothChime.js</code>, <code>AudioMothChimeConnector.js</code> (repo mapē <code>Javascript</code>).</li>
+  </ul>
+
+  <h2 style="font-size:1.05rem;margin:14px 0 6px">QGIS virtuālā lauka izteiksme</h2>
+  <p class="muted" style="margin:0 0 6px">Izveidojiet jaunu <em>Virtual field</em> un kā vērtību izmantojiet vienu no variantiem zemāk. Nomainiet <code>&lt;JŪSU_URL&gt;</code> uz jūsu GitHub Pages adresi un <code>&lt;ID_LAUKS&gt;</code> uz jūsu lauka nosaukumu (piem., <code>fid</code>).</p>
+
+  <p><strong>1) Slānis jau ir WGS84 (EPSG:4326):</strong></p>
+  <pre><code>'&lt;a href="' ||
+'&lt;JŪSU_URL&gt;?lat=' ||
+replace(format_number(y($geometry), 6), ',', '.') ||
+'&amp;lon=' ||
+replace(format_number(x($geometry), 6), ',', '.') ||
+'&amp;deployment=' || "&lt;ID_LAUKS&gt;" ||
+'&quot;&gt;Atskaņot Chime&lt;/a&gt;'</code></pre>
+
+  <p><strong>2) Slānis NAV WGS84 (vajag transformāciju uz EPSG:4326):</strong></p>
+  <pre><code>'&lt;a href="' ||
+'&lt;JŪSU_URL&gt;?lat=' ||
+replace(format_number(y(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '.') ||
+'&amp;lon=' ||
+replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '.') ||
+'&amp;deployment=' || "&lt;ID_LAUKS&gt;" ||
+'&quot;&gt;Atskaņot Chime&lt;/a&gt;'</code></pre>
+
+  <p style="margin-top:6px" class="muted">Piezīme: lauka <em>Widget</em> iestatiet uz <strong>Text Edit</strong>, atzīmējiet <strong>Multiline</strong> un <strong>HTML</strong>, lai saite būtu klikšķināma Mergin Maps.</p>
+</div>
 
 <script>
   // ---------- DOM helpers ----------
