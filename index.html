@@ -31,7 +31,6 @@
   .copy-btn:hover{background:#eef2f7}
 </style>
 
-<!-- AudioMoth chime library files (keep these filenames exactly) -->
 <script src="./AudioMothChime.js"></script>
 <script src="./AudioMothChimeConnector.js"></script>
 
@@ -65,7 +64,6 @@
 </div>
 <div class="hint" id="status"></div>
 
-<!-- INFO / ATSAUCES & QGIS INSTRUKCIJA -->
 <div class="card" style="margin-top:14px">
   <h2 style="font-size:1.05rem;margin:0 0 8px">Atsauces</h2>
   <ul>
@@ -78,32 +76,32 @@
   <p class="muted" style="margin:0 0 6px">
     Izveidojiet jaunu <em>Virtual field</em> un kā vērtību izmantojiet vienu no variantiem zemāk.
     Ja ID lauks nav <code>fid</code>, nomainiet <code>&lt;ID_LAUKS&gt;</code> uz jūsu lauka nosaukumu.
-    Adresi atstājam publisku: <code>https://peterisdaknis.github.io/amchime/</code>
+    Izmanto šo adresi vai izveido savu: <code>https://peterisdaknis.github.io/amchime/</code>
   </p>
 
   <div class="copy-wrap">
     <strong>1) Slānis jau ir WGS84 (EPSG:4326):</strong>
     <button class="copy-btn" id="copy-wgs84" aria-label="Kopēt WGS84 izteiksmi">Kopēt</button>
   </div>
-  <pre><code id="code-wgs84">'<a href="' ||
+  <pre><code id="code-wgs84">'&lt;a href="' ||
 'https://peterisdaknis.github.io/amchime/?lat=' ||
 replace(format_number(y($geometry), 6), ',', '.') ||
-'&lon=' ||
+'&amp;lon=' ||
 replace(format_number(x($geometry), 6), ',', '.') ||
-'&deployment=' || "&lt;ID_LAUKS&gt;" ||
-'">Atskaņot Chime</a>'</code></pre>
+'&amp;deployment=' || "&lt;ID_LAUKS&gt;" ||
+'&quot;&gt;Atskaņot Chime&lt;/a&gt;'</code></pre>
 
   <div class="copy-wrap">
     <strong>2) Slānis NAV WGS84 (vajag transformāciju uz EPSG:4326):</strong>
     <button class="copy-btn" id="copy-transform" aria-label="Kopēt transformācijas izteiksmi">Kopēt</button>
   </div>
-  <pre><code id="code-transform">'<a href="' ||
+  <pre><code id="code-transform">'&lt;a href="' ||
 'https://peterisdaknis.github.io/amchime/?lat=' ||
 replace(format_number(y(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '.') ||
-'&lon=' ||
+'&amp;lon=' ||
 replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '.') ||
-'&deployment=' || "&lt;ID_LAUKS&gt;" ||
-'">Atskaņot Chime</a>'</code></pre>
+'&amp;deployment=' || "&lt;ID_LAUKS&gt;" ||
+'&quot;&gt;Atskaņot Chime&lt;/a&gt;'</code></pre>
 
   <p style="margin-top:6px" class="muted">
     Piezīme: lauka <em>Widget</em> iestatiet uz <strong>Text Edit</strong>, atzīmējiet <strong>Multiline</strong> un <strong>HTML</strong>, lai saite būtu klikšķināma Mergin Maps.
@@ -125,7 +123,7 @@ replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '
   const lat0 = qs.get('lat') ?? qs.get('latitude');
   const lon0 = qs.get('lon') ?? qs.get('lng') ?? qs.get('longitude');
   const dep0 = qs.get('deployment') ?? qs.get('dep') ?? qs.get('deployment_id');
-  const fid0 = qs.get('fid') ?? dep0; // parādīšanai "objekta Nr"
+  const fid0 = qs.get('fid') ?? dep0;
 
   function toFixed6Dot(v){
     const n = Number(String(v ?? '').trim().replace(',', '.'));
@@ -161,7 +159,7 @@ replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
       const osc = ctx.createOscillator();
-      osc.frequency.value = 1000; // 1 kHz
+      osc.frequency.value = 1000;
       osc.connect(ctx.destination);
       osc.start();
       setStatus('Testa signāls skan…');
@@ -200,7 +198,6 @@ replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '
       const now = new Date();
 
       if (depArr) {
-        // (date, latitude, longitude, deploymentID, callback)
         connector.playTimeAndDeploymentID(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, depArr, done);
       } else {
         connector.playTime(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
