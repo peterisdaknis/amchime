@@ -13,15 +13,22 @@
   input[readonly]:focus{outline:none}
   button{padding:10px 14px;border-radius:10px;border:1px solid #d1d5db;background:white;cursor:pointer}
   button:hover{background:#f3f4f6}
+  #play{background:#3e8e5b;border-color:#3e8e5b;color:#fff;font-weight:700}
+  #play:hover{filter:brightness(0.97)}
+  #play:active{transform:translateY(1px)}
+  #play:disabled{opacity:.65;cursor:not-allowed}
   .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
   .hint{opacity:.85;margin-top:10px;min-height:1.2em}
   ul{margin:8px 0 0 22px;padding:0}
   strong{font-weight:600}
   .muted{opacity:.7}
-  pre{background:#0b1020;color:#e6edf3;padding:12px;border-radius:10px;overflow:auto}
-  code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+  pre{background:#0b1020;color:#e6edf3;padding:12px;border-radius:10px;overflow:auto;margin:6px 0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
   a{color:#2563eb;text-decoration:none}
   a:hover{text-decoration:underline}
+  .copy-wrap{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .copy-btn{padding:8px 10px;border-radius:8px;border:1px solid #d1d5db;background:#f8fafc;cursor:pointer;font-size:0.9rem}
+  .copy-btn:hover{background:#eef2f7}
 </style>
 
 <!-- AudioMoth chime library files (keep these filenames exactly) -->
@@ -53,8 +60,8 @@
 <input id="dep" type="text" inputmode="numeric" readonly placeholder="0x0000000000003039" />
 
 <div class="row">
-  <button id="test">Audio tests (1 kHz / 1 s)</button>
-  <button id="play">Atskaņot</button>
+  <button id="test" aria-label="Audio tests">Audio tests (1 kHz / 1 s)</button>
+  <button id="play" aria-label="Atskaņot chime">Atskaņot</button>
 </div>
 <div class="hint" id="status"></div>
 
@@ -65,29 +72,42 @@
     <li>AudioMoth Chime (repozitorijs): <a href="https://github.com/OpenAcousticDevices/AudioMoth-Chime" target="_blank" rel="noopener">github.com/OpenAcousticDevices/AudioMoth-Chime</a></li>
     <li>JS faili izmantoti šeit: <code>AudioMothChime.js</code>, <code>AudioMothChimeConnector.js</code> (repo mapē <code>Javascript</code>).</li>
   </ul>
+  <p class="muted" style="margin:10px 0 0"><em>Šī rīka autors: Pēteris Daknis, SIA EU Temporalis.</em></p>
 
   <h2 style="font-size:1.05rem;margin:14px 0 6px">QGIS virtuālā lauka izteiksme</h2>
-  <p class="muted" style="margin:0 0 6px">Izveidojiet jaunu <em>Virtual field</em> un kā vērtību izmantojiet vienu no variantiem zemāk. Nomainiet <code>&lt;JŪSU_URL&gt;</code> uz jūsu GitHub Pages adresi un <code>&lt;ID_LAUKS&gt;</code> uz jūsu lauka nosaukumu (piem., <code>fid</code>).</p>
+  <p class="muted" style="margin:0 0 6px">
+    Izveidojiet jaunu <em>Virtual field</em> un kā vērtību izmantojiet vienu no variantiem zemāk.
+    Ja ID lauks nav <code>fid</code>, nomainiet <code>&lt;ID_LAUKS&gt;</code> uz jūsu lauka nosaukumu.
+    Adresi atstājam publisku: <code>https://peterisdaknis.github.io/amchime/</code>
+  </p>
 
-  <p><strong>1) Slānis jau ir WGS84 (EPSG:4326):</strong></p>
-  <pre><code>'&lt;a href="' ||
-'&lt;JŪSU_URL&gt;?lat=' ||
+  <div class="copy-wrap">
+    <strong>1) Slānis jau ir WGS84 (EPSG:4326):</strong>
+    <button class="copy-btn" id="copy-wgs84" aria-label="Kopēt WGS84 izteiksmi">Kopēt</button>
+  </div>
+  <pre><code id="code-wgs84">'<a href="' ||
+'https://peterisdaknis.github.io/amchime/?lat=' ||
 replace(format_number(y($geometry), 6), ',', '.') ||
-'&amp;lon=' ||
+'&lon=' ||
 replace(format_number(x($geometry), 6), ',', '.') ||
-'&amp;deployment=' || "&lt;ID_LAUKS&gt;" ||
-'&quot;&gt;Atskaņot Chime&lt;/a&gt;'</code></pre>
+'&deployment=' || "&lt;ID_LAUKS&gt;" ||
+'">Atskaņot Chime</a>'</code></pre>
 
-  <p><strong>2) Slānis NAV WGS84 (vajag transformāciju uz EPSG:4326):</strong></p>
-  <pre><code>'&lt;a href="' ||
-'&lt;JŪSU_URL&gt;?lat=' ||
+  <div class="copy-wrap">
+    <strong>2) Slānis NAV WGS84 (vajag transformāciju uz EPSG:4326):</strong>
+    <button class="copy-btn" id="copy-transform" aria-label="Kopēt transformācijas izteiksmi">Kopēt</button>
+  </div>
+  <pre><code id="code-transform">'<a href="' ||
+'https://peterisdaknis.github.io/amchime/?lat=' ||
 replace(format_number(y(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '.') ||
-'&amp;lon=' ||
+'&lon=' ||
 replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '.') ||
-'&amp;deployment=' || "&lt;ID_LAUKS&gt;" ||
-'&quot;&gt;Atskaņot Chime&lt;/a&gt;'</code></pre>
+'&deployment=' || "&lt;ID_LAUKS&gt;" ||
+'">Atskaņot Chime</a>'</code></pre>
 
-  <p style="margin-top:6px" class="muted">Piezīme: lauka <em>Widget</em> iestatiet uz <strong>Text Edit</strong>, atzīmējiet <strong>Multiline</strong> un <strong>HTML</strong>, lai saite būtu klikšķināma Mergin Maps.</p>
+  <p style="margin-top:6px" class="muted">
+    Piezīme: lauka <em>Widget</em> iestatiet uz <strong>Text Edit</strong>, atzīmējiet <strong>Multiline</strong> un <strong>HTML</strong>, lai saite būtu klikšķināma Mergin Maps.
+  </p>
 </div>
 
 <script>
@@ -115,7 +135,7 @@ replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '
   if (lon0 != null) lonEl.value = toFixed6Dot(lon0);
   if (fid0 != null) fidView.textContent = String(fid0);
 
-  // ---------- Deployment helpers (decimal/hex -> 8 bytes, and hex view) ----------
+  // ---------- Deployment helpers ----------
   function bigIntTo8Bytes(x){
     let n = BigInt(x);
     const out = Array(8).fill(0);
@@ -130,14 +150,12 @@ replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '
     return null;
   }
   function bytesToHex(a){ return '0x' + a.map(b => b.toString(16).padStart(2,'0')).join(''); }
-
-  // Normalize the deployment display to HEX (if provided)
   (function setDepDisplay(){
     const arr = parseDeployment(dep0 ?? '');
     if (arr) depEl.value = bytesToHex(arr);
   })();
 
-  // ---------- Test audio (plain beep) ----------
+  // ---------- Test audio ----------
   $('test').addEventListener('click', async () => {
     try{
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -169,11 +187,9 @@ replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '
       return;
     }
     try{
-      // (ja audio konteksts ir apturēts, mēģinām atsākt)
       if (connector.audioContext && connector.audioContext.state === 'suspended'){
         await connector.audioContext.resume();
       }
-
       const latNum = Number((latEl.value || '').replace(',', '.'));
       const lonNum = Number((lonEl.value || '').replace(',', '.'));
       const depArr = parseDeployment(depEl.value);
@@ -184,7 +200,7 @@ replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '
       const now = new Date();
 
       if (depArr) {
-        // Kārtība: (date, latitude, longitude, deploymentID, callback)
+        // (date, latitude, longitude, deploymentID, callback)
         connector.playTimeAndDeploymentID(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, depArr, done);
       } else {
         connector.playTime(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
@@ -194,4 +210,23 @@ replace(format_number(x(transform($geometry, @map_crs, 'EPSG:4326')), 6), ',', '
       setStatus('Kļūda atskaņojot Chime: ' + e.message);
     }
   });
+
+  // ---------- Copy buttons ----------
+  function attachCopy(btnId, codeId){
+    const btn = $(btnId);
+    const code = $(codeId);
+    if (!btn || !code) return;
+    btn.addEventListener('click', async () => {
+      try{
+        await navigator.clipboard.writeText(code.textContent);
+        const t = btn.textContent;
+        btn.textContent = 'Nokopēts!';
+        setTimeout(() => btn.textContent = t, 1200);
+      }catch(e){
+        alert('Neizdevās kopēt: ' + e.message);
+      }
+    });
+  }
+  attachCopy('copy-wgs84','code-wgs84');
+  attachCopy('copy-transform','code-transform');
 </script>
