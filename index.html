@@ -1,28 +1,56 @@
 <!doctype html>
+<meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>AudioMoth Chime (Mergin link)</title>
+<title>Mergin Maps AudioMoth Chime v0.1</title>
 <style>
-  body{font:16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:700px;margin:16px auto;padding:0 12px}
-  label{display:block;margin:10px 0 4px} input{width:100%;padding:8px}
-  button{padding:10px 14px;margin-top:14px}
-  .row{display:flex;gap:12px;flex-wrap:wrap}
-  .hint{opacity:.8;margin-top:10px;min-height:1.2em}
+  :root { --mx: 12px; }
+  body{font:16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:760px;margin:16px auto;padding:0 var(--mx);line-height:1.35}
+  h1{font-size:1.25rem;margin:8px 0}
+  .top{display:flex;align-items:center;gap:10px;margin:6px 0 14px}
+  .card{background:#f6f7f9;border:1px solid #e5e7eb;border-radius:12px;padding:14px}
+  label{display:block;margin:10px 0 4px}
+  input[readonly]{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;background:#f9fafb;color:#111}
+  input[readonly]:focus{outline:none}
+  button{padding:10px 14px;border-radius:10px;border:1px solid #d1d5db;background:white;cursor:pointer}
+  button:hover{background:#f3f4f6}
+  .row{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
+  .hint{opacity:.85;margin-top:10px;min-height:1.2em}
+  ul{margin:8px 0 0 22px;padding:0}
+  strong{font-weight:600}
+  .muted{opacity:.7}
 </style>
 
 <!-- AudioMoth chime library files (keep these filenames exactly) -->
 <script src="./AudioMothChime.js"></script>
 <script src="./AudioMothChimeConnector.js"></script>
 
-<h1>AudioMoth Chime v0.1</h1>
-<p>Prefilled from the Mergin link. Adjust if needed, then press Play.</p>
+<div class="top">
+  <img src="./logo.png" alt="Logo" style="width:30px;height:auto;display:block" />
+  <h1>Mergin Maps AudioMoth Chime v0.1</h1>
+</div>
 
-<label>Latitude</label><input id="lat" type="text" inputmode="decimal" placeholder="56.949600">
-<label>Longitude</label><input id="lon" type="text" inputmode="decimal" placeholder="24.105200">
-<label>Deployment (decimal or 0xHEX; fits in 8 bytes)</label><input id="dep" type="text" inputmode="numeric" placeholder="e.g. 12345 or 0x0000000000003039">
+<div class="card">
+  <p><strong>Dati no Mergin objekta Nr: <span id="fidView">—</span></strong></p>
+  <ul class="muted">
+    <li>Pārliecināties, ka AudioMoth ir Chime klausīšanās režīmā (deg sarkana, mirgo zaļa diode).</li>
+    <li>Noregulēt audio skaļumu uz maksimālo.</li>
+    <li>Pavērst telefona skaļruni pret AudioMoth mikrofonu un nospiest <em>“Atskaņot”</em>.</li>
+    <li>Pārliecināties, ka pēc atskaņošanas AudioMoth diodes nodziest.</li>
+  </ul>
+</div>
+
+<label>Platums (lat)</label>
+<input id="lat" type="text" inputmode="decimal" readonly placeholder="56.949600" />
+
+<label>Garums (lon)</label>
+<input id="lon" type="text" inputmode="decimal" readonly placeholder="24.105200" />
+
+<label>Deployment ID (HEX)</label>
+<input id="dep" type="text" inputmode="numeric" readonly placeholder="0x0000000000003039" />
 
 <div class="row">
-  <button id="test">Test audio (1 kHz / 1 s)</button>
-  <button id="play">Play chime</button>
+  <button id="test">Audio tests (1 kHz / 1 s)</button>
+  <button id="play">Atskaņot</button>
 </div>
 <div class="hint" id="status"></div>
 
@@ -32,36 +60,26 @@
   const latEl = $('lat');
   const lonEl = $('lon');
   const depEl = $('dep');
+  const fidView = $('fidView');
   const statusEl = $('status');
   function setStatus(msg){ statusEl.textContent = msg || ''; }
 
-  // ---------- Query string prefill ----------
+  // ---------- Query string & formatting ----------
   const qs = new URLSearchParams(location.search);
   const lat0 = qs.get('lat') ?? qs.get('latitude');
   const lon0 = qs.get('lon') ?? qs.get('lng') ?? qs.get('longitude');
   const dep0 = qs.get('deployment') ?? qs.get('dep') ?? qs.get('deployment_id');
+  const fid0 = qs.get('fid') ?? dep0; // parādīšanai "objekta Nr"
 
-  // Accept commas but always display with a dot and 6 decimals
   function toFixed6Dot(v){
     const n = Number(String(v ?? '').trim().replace(',', '.'));
     return Number.isFinite(n) ? n.toFixed(6) : '';
   }
   if (lat0 != null) latEl.value = toFixed6Dot(lat0);
   if (lon0 != null) lonEl.value = toFixed6Dot(lon0);
-  if (dep0) depEl.value = dep0;
+  if (fid0 != null) fidView.textContent = String(fid0);
 
-  // Keep the parser tolerant to commas, but normalize on blur/change
-  function parseNumberLike(inputEl){
-    const raw = (inputEl.value || '').trim().replace(',', '.');
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : NaN;
-  }
-  ['blur','change'].forEach(ev => {
-    latEl.addEventListener(ev, () => { const n = parseNumberLike(latEl); if (Number.isFinite(n)) latEl.value = n.toFixed(6); });
-    lonEl.addEventListener(ev, () => { const n = parseNumberLike(lonEl); if (Number.isFinite(n)) lonEl.value = n.toFixed(6); });
-  });
-
-  // ---------- Deployment helpers (decimal or 0xHEX -> 8 bytes) ----------
+  // ---------- Deployment helpers (decimal/hex -> 8 bytes, and hex view) ----------
   function bigIntTo8Bytes(x){
     let n = BigInt(x);
     const out = Array(8).fill(0);
@@ -75,6 +93,13 @@
     if (/^[0-9]+$/.test(s))       return bigIntTo8Bytes(s);         // decimal
     return null;
   }
+  function bytesToHex(a){ return '0x' + a.map(b => b.toString(16).padStart(2,'0')).join(''); }
+
+  // Normalize the deployment display to HEX (if provided)
+  (function setDepDisplay(){
+    const arr = parseDeployment(dep0 ?? '');
+    if (arr) depEl.value = bytesToHex(arr);
+  })();
 
   // ---------- Test audio (plain beep) ----------
   $('test').addEventListener('click', async () => {
@@ -82,14 +107,14 @@
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
       const osc = ctx.createOscillator();
-      osc.frequency.value = 1000; // 1 kHz, very audible
+      osc.frequency.value = 1000; // 1 kHz
       osc.connect(ctx.destination);
       osc.start();
-      setStatus('Beep playing…');
-      setTimeout(() => { osc.stop(); ctx.close(); setStatus('Beep finished.'); }, 1000);
+      setStatus('Testa signāls skan…');
+      setTimeout(() => { osc.stop(); ctx.close(); setStatus('Tests pabeigts.'); }, 1000);
     }catch(e){
       console.error(e);
-      setStatus('Could not play test tone: ' + e.message);
+      setStatus('Neizdevās atskaņot testa signālu: ' + e.message);
     }
   });
 
@@ -99,38 +124,38 @@
     connector = new AudioMothChimeConnector();
   }catch(e){
     console.error(e);
-    setStatus('AudioMoth scripts not loaded. Check that AudioMothChime.js and AudioMothChimeConnector.js are present in the repo root.');
+    setStatus('AudioMoth skripti nav ielādēti. Pārbaudiet, vai AudioMothChime.js un AudioMothChimeConnector.js ir repozitorija saknē.');
   }
 
   $('play').addEventListener('click', async () => {
     if (!connector){
-      setStatus('Chime library not available.');
+      setStatus('Chime bibliotēka nav pieejama.');
       return;
     }
     try{
-      // Resume audio context if needed (mobile browsers)
+      // (ja audio konteksts ir apturēts, mēģinām atsākt)
       if (connector.audioContext && connector.audioContext.state === 'suspended'){
         await connector.audioContext.resume();
       }
 
-      const latNum = parseNumberLike(latEl);
-      const lonNum = parseNumberLike(lonEl);
+      const latNum = Number((latEl.value || '').replace(',', '.'));
+      const lonNum = Number((lonEl.value || '').replace(',', '.'));
       const depArr = parseDeployment(depEl.value);
       const hasLatLon = Number.isFinite(latNum) && Number.isFinite(lonNum);
 
-      setStatus('Playing chime… ensure device volume is up / not muted.');
-      const done = () => setStatus('Chime finished.');
+      setStatus('Atskaņoju Chime… pārliecinieties, ka skaņa nav izslēgta un skaļums ir maksimāls.');
+      const done = () => setStatus('Chime atskaņošana pabeigta.');
       const now = new Date();
 
       if (depArr) {
-        // NOTE: order = (date, latitude, longitude, deploymentID, callback)
+        // Kārtība: (date, latitude, longitude, deploymentID, callback)
         connector.playTimeAndDeploymentID(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, depArr, done);
       } else {
         connector.playTime(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
       }
     }catch(e){
       console.error(e);
-      setStatus('Error while playing chime: ' + e.message);
+      setStatus('Kļūda atskaņojot Chime: ' + e.message);
     }
   });
 </script>
