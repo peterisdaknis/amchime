@@ -27,35 +27,57 @@
 <div class="hint" id="status"></div>
 
 <script>
-  // Read query string (?lat=...&lon=...&deployment=...)
-const qs = new URLSearchParams(location.search);
-const lat0 = qs.get('lat') ?? qs.get('latitude');
-const lon0 = qs.get('lon') ?? qs.get('lng') ?? qs.get('longitude');
-const dep0 = qs.get('deployment') ?? qs.get('dep') ?? qs.get('deployment_id');
+  // ---------- DOM helpers ----------
+  const $ = (id) => document.getElementById(id);
+  const latEl = $('lat');
+  const lonEl = $('lon');
+  const depEl = $('dep');
+  const statusEl = $('status');
+  function setStatus(msg){ statusEl.textContent = msg || ''; }
 
-// Accept commas but always display with a dot and 6 decimals
-function toFixed6Dot(v){
-  const n = Number(String(v ?? '').trim().replace(',', '.'));
-  return Number.isFinite(n) ? n.toFixed(6) : '';
-}
-if (lat0 != null) lat.value = toFixed6Dot(lat0);
-if (lon0 != null) lon.value = toFixed6Dot(lon0);
-if (dep0) dep.value = dep0;
+  // ---------- Query string prefill ----------
+  const qs = new URLSearchParams(location.search);
+  const lat0 = qs.get('lat') ?? qs.get('latitude');
+  const lon0 = qs.get('lon') ?? qs.get('lng') ?? qs.get('longitude');
+  const dep0 = qs.get('deployment') ?? qs.get('dep') ?? qs.get('deployment_id');
 
-// Keep the parser tolerant to commas, but we’ll reformat on blur
-function parseNumberLike(inputEl){
-  const raw = (inputEl.value || '').trim().replace(',', '.');
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : NaN;
-}
-// Reformat to 6 decimals with dot whenever the user leaves the field
-['blur','change'].forEach(ev => {
-  lat.addEventListener(ev, () => { const n = parseNumberLike(lat); if (Number.isFinite(n)) lat.value = n.toFixed(6); });
-  lon.addEventListener(ev, () => { const n = parseNumberLike(lon); if (Number.isFinite(n)) lon.value = n.toFixed(6); });
-});
+  // Accept commas but always display with a dot and 6 decimals
+  function toFixed6Dot(v){
+    const n = Number(String(v ?? '').trim().replace(',', '.'));
+    return Number.isFinite(n) ? n.toFixed(6) : '';
+  }
+  if (lat0 != null) latEl.value = toFixed6Dot(lat0);
+  if (lon0 != null) lonEl.value = toFixed6Dot(lon0);
+  if (dep0) depEl.value = dep0;
 
-  // --- Test audio (plain beep) ---
-  document.getElementById('test').addEventListener('click', async () => {
+  // Keep the parser tolerant to commas, but normalize on blur/change
+  function parseNumberLike(inputEl){
+    const raw = (inputEl.value || '').trim().replace(',', '.');
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : NaN;
+  }
+  ['blur','change'].forEach(ev => {
+    latEl.addEventListener(ev, () => { const n = parseNumberLike(latEl); if (Number.isFinite(n)) latEl.value = n.toFixed(6); });
+    lonEl.addEventListener(ev, () => { const n = parseNumberLike(lonEl); if (Number.isFinite(n)) lonEl.value = n.toFixed(6); });
+  });
+
+  // ---------- Deployment helpers (decimal or 0xHEX -> 8 bytes) ----------
+  function bigIntTo8Bytes(x){
+    let n = BigInt(x);
+    const out = Array(8).fill(0);
+    for (let i = 7; i >= 0; i--) { out[i] = Number(n & 0xFFn); n >>= 8n; }
+    return out;
+  }
+  function parseDeployment(s){
+    if (!s) return null;
+    s = s.trim();
+    if (/^0x[0-9a-f]+$/i.test(s)) return bigIntTo8Bytes(BigInt(s)); // hex
+    if (/^[0-9]+$/.test(s))       return bigIntTo8Bytes(s);         // decimal
+    return null;
+  }
+
+  // ---------- Test audio (plain beep) ----------
+  $('test').addEventListener('click', async () => {
     try{
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
@@ -71,7 +93,7 @@ function parseNumberLike(inputEl){
     }
   });
 
-  // --- Chime playback ---
+  // ---------- Chime playback ----------
   let connector;
   try{
     connector = new AudioMothChimeConnector();
@@ -80,45 +102,32 @@ function parseNumberLike(inputEl){
     setStatus('AudioMoth scripts not loaded. Check that AudioMothChime.js and AudioMothChimeConnector.js are present in the repo root.');
   }
 
-  document.getElementById('play').addEventListener('click', async () => {
+  $('play').addEventListener('click', async () => {
     if (!connector){
       setStatus('Chime library not available.');
       return;
     }
     try{
-      // iOS/Chrome: ensure audio is unlocked
+      // Resume audio context if needed (mobile browsers)
       if (connector.audioContext && connector.audioContext.state === 'suspended'){
         await connector.audioContext.resume();
       }
 
-      const latNum = parseNumberLike(lat);
-      const lonNum = parseNumberLike(lon);
-      const depArr = parseDeployment(dep.value);
+      const latNum = parseNumberLike(latEl);
+      const lonNum = parseNumberLike(lonEl);
+      const depArr = parseDeployment(depEl.value);
       const hasLatLon = Number.isFinite(latNum) && Number.isFinite(lonNum);
 
       setStatus('Playing chime… ensure device volume is up / not muted.');
       const done = () => setStatus('Chime finished.');
-
       const now = new Date();
-      console.log('Calling playTimeAndDeploymentID', { latNum, lonNum, depArr });
 
       if (depArr) {
-  connector.playTimeAndDeploymentID(
-    now,
-    hasLatLon ? latNum : null,
-    hasLatLon ? lonNum : null,
-    depArr,
-    done
-  );
-} else {
-  connector.playTime(
-    now,
-    hasLatLon ? latNum : null,
-    hasLatLon ? lonNum : null,
-    done
-  );
-}
-
+        // NOTE: order = (date, latitude, longitude, deploymentID, callback)
+        connector.playTimeAndDeploymentID(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, depArr, done);
+      } else {
+        connector.playTime(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
+      }
     }catch(e){
       console.error(e);
       setStatus('Error while playing chime: ' + e.message);
