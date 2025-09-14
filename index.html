@@ -1,0 +1,73 @@
+<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AudioMoth Chime (Mergin link)</title>
+<style>
+  body{font:16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:700px;margin:16px auto;padding:0 12px}
+  label{display:block;margin:10px 0 4px} input{width:100%;padding:8px}
+  button{padding:10px 14px;margin-top:14px}
+  .hint{opacity:.85;margin-top:10px}
+</style>
+
+<!-- Include the AudioMoth chime scripts (you'll add these files next) -->
+<script src="./AudioMothChime.js"></script>
+<script src="./AudioMothChimeConnector.js"></script>
+
+<h1>AudioMoth Chime</h1>
+<p>Prefilled from the Mergin link. Adjust if needed, then press Play.</p>
+
+<label>Latitude</label><input id="lat" type="number" step="0.000001" inputmode="decimal">
+<label>Longitude</label><input id="lon" type="number" step="0.000001" inputmode="decimal">
+<label>Deployment (decimal or 0xHEX; fits in 8 bytes)</label><input id="dep" type="text" inputmode="numeric" placeholder="e.g. 12345 or 0x0000000000003039">
+
+<button id="play">Play chime</button>
+<div class="hint" id="status"></div>
+
+<script>
+  // Read query string (?lat=...&lon=...&deployment=...)
+  const qs = new URLSearchParams(location.search);
+  const n = k => (qs.get(k) === null ? null : Number(qs.get(k)));
+  const lat0 = n('lat') ?? n('latitude');
+  const lon0 = n('lon') ?? n('lng') ?? n('longitude');
+  const dep0 = qs.get('deployment') ?? qs.get('dep') ?? qs.get('deployment_id');
+
+  if (lat0 !== null) lat.value = lat0.toFixed(6);
+  if (lon0 !== null) lon.value = lon0.toFixed(6);
+  if (dep0) dep.value = dep0;
+
+  // Helpers: pack decimal or 0xHEX into 8 bytes (big-endian)
+  function bigIntTo8Bytes(x){
+    let n = BigInt(x);
+    const out = Array(8).fill(0);
+    for (let i=7; i>=0; i--){ out[i] = Number(n & 0xFFn); n >>= 8n; }
+    return out;
+  }
+  function parseDeployment(s){
+    if (!s) return null;
+    s = s.trim();
+    if (/^0x[0-9a-f]+$/i.test(s)) return bigIntTo8Bytes(BigInt(s));
+    if (/^[0-9]+$/.test(s))       return bigIntTo8Bytes(s);
+    return null;
+  }
+
+  const connector = new AudioMothChimeConnector();
+  const statusEl = document.getElementById('status');
+  const setStatus = msg => statusEl.textContent = msg;
+
+  document.getElementById('play').addEventListener('click', () => {
+    const latNum = Number(lat.value || NaN);
+    const lonNum = Number(lon.value || NaN);
+    const depArr = parseDeployment(dep.value);
+    const hasLatLon = !Number.isNaN(latNum) && !Number.isNaN(lonNum);
+    const done = () => { setStatus('Chime finished.'); play.disabled = false; };
+
+    play.disabled = true;
+    setStatus('Playing chime… ensure phone media volume is up / not muted.');
+
+    const now = new Date();
+    if (depArr) {
+      connector.playTimeAndDeploymentID(now, depArr, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
+    } else {
+      connector.playTime(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
+    }
+  });
+</script>
