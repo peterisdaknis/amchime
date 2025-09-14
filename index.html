@@ -5,36 +5,48 @@
   body{font:16px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:700px;margin:16px auto;padding:0 12px}
   label{display:block;margin:10px 0 4px} input{width:100%;padding:8px}
   button{padding:10px 14px;margin-top:14px}
-  .hint{opacity:.85;margin-top:10px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .hint{opacity:.8;margin-top:10px;min-height:1.2em}
 </style>
 
-<!-- Include the AudioMoth chime scripts (you'll add these files next) -->
+<!-- AudioMoth chime library files (keep these filenames exactly) -->
 <script src="./AudioMothChime.js"></script>
 <script src="./AudioMothChimeConnector.js"></script>
 
 <h1>AudioMoth Chime</h1>
 <p>Prefilled from the Mergin link. Adjust if needed, then press Play.</p>
 
-<label>Latitude</label><input id="lat" type="number" step="0.000001" inputmode="decimal">
-<label>Longitude</label><input id="lon" type="number" step="0.000001" inputmode="decimal">
+<label>Latitude</label><input id="lat" type="text" inputmode="decimal" placeholder="56.949600">
+<label>Longitude</label><input id="lon" type="text" inputmode="decimal" placeholder="24.105200">
 <label>Deployment (decimal or 0xHEX; fits in 8 bytes)</label><input id="dep" type="text" inputmode="numeric" placeholder="e.g. 12345 or 0x0000000000003039">
 
-<button id="play">Play chime</button>
+<div class="row">
+  <button id="test">Test audio (1 kHz / 1 s)</button>
+  <button id="play">Play chime</button>
+</div>
 <div class="hint" id="status"></div>
 
 <script>
-  // Read query string (?lat=...&lon=...&deployment=...)
+  // --- Helpers ---
   const qs = new URLSearchParams(location.search);
-  const n = k => (qs.get(k) === null ? null : Number(qs.get(k)));
-  const lat0 = n('lat') ?? n('latitude');
-  const lon0 = n('lon') ?? n('lng') ?? n('longitude');
-  const dep0 = qs.get('deployment') ?? qs.get('dep') ?? qs.get('deployment_id');
 
-  if (lat0 !== null) lat.value = lat0.toFixed(6);
-  if (lon0 !== null) lon.value = lon0.toFixed(6);
+  function setStatus(msg){ document.getElementById('status').textContent = msg || ''; }
+
+  // Accept commas as decimal separators and sanitize spaces
+  function parseNumberLike(inputEl){
+    const raw = (inputEl.value || '').trim().replace(',', '.');
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
+  // Prefill from query string
+  const lat0 = qs.get('lat') ?? qs.get('latitude');
+  const lon0 = qs.get('lon') ?? qs.get('lng') ?? qs.get('longitude');
+  const dep0 = qs.get('deployment') ?? qs.get('dep') ?? qs.get('deployment_id');
+  if (lat0) lat.value = lat0;
+  if (lon0) lon.value = lon0;
   if (dep0) dep.value = dep0;
 
-  // Helpers: pack decimal or 0xHEX into 8 bytes (big-endian)
   function bigIntTo8Bytes(x){
     let n = BigInt(x);
     const out = Array(8).fill(0);
@@ -49,25 +61,60 @@
     return null;
   }
 
-  const connector = new AudioMothChimeConnector();
-  const statusEl = document.getElementById('status');
-  const setStatus = msg => statusEl.textContent = msg;
+  // --- Test audio (plain beep) ---
+  document.getElementById('test').addEventListener('click', async () => {
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AC();
+      const osc = ctx.createOscillator();
+      osc.frequency.value = 1000; // 1 kHz, very audible
+      osc.connect(ctx.destination);
+      osc.start();
+      setStatus('Beep playing…');
+      setTimeout(() => { osc.stop(); ctx.close(); setStatus('Beep finished.'); }, 1000);
+    }catch(e){
+      console.error(e);
+      setStatus('Could not play test tone: ' + e.message);
+    }
+  });
 
-  document.getElementById('play').addEventListener('click', () => {
-    const latNum = Number(lat.value || NaN);
-    const lonNum = Number(lon.value || NaN);
-    const depArr = parseDeployment(dep.value);
-    const hasLatLon = !Number.isNaN(latNum) && !Number.isNaN(lonNum);
-    const done = () => { setStatus('Chime finished.'); play.disabled = false; };
+  // --- Chime playback ---
+  let connector;
+  try{
+    connector = new AudioMothChimeConnector();
+  }catch(e){
+    console.error(e);
+    setStatus('AudioMoth scripts not loaded. Check that AudioMothChime.js and AudioMothChimeConnector.js are present in the repo root.');
+  }
 
-    play.disabled = true;
-    setStatus('Playing chime… ensure phone media volume is up / not muted.');
+  document.getElementById('play').addEventListener('click', async () => {
+    if (!connector){
+      setStatus('Chime library not available.');
+      return;
+    }
+    try{
+      // iOS/Chrome: ensure audio is unlocked
+      if (connector.audioContext && connector.audioContext.state === 'suspended'){
+        await connector.audioContext.resume();
+      }
 
-    const now = new Date();
-    if (depArr) {
-      connector.playTimeAndDeploymentID(now, depArr, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
-    } else {
-      connector.playTime(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
+      const latNum = parseNumberLike(lat);
+      const lonNum = parseNumberLike(lon);
+      const depArr = parseDeployment(dep.value);
+      const hasLatLon = Number.isFinite(latNum) && Number.isFinite(lonNum);
+
+      setStatus('Playing chime… ensure device volume is up / not muted.');
+      const done = () => setStatus('Chime finished.');
+
+      const now = new Date();
+      if (depArr) {
+        connector.playTimeAndDeploymentID(now, depArr, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
+      } else {
+        connector.playTime(now, hasLatLon ? latNum : null, hasLatLon ? lonNum : null, done);
+      }
+    }catch(e){
+      console.error(e);
+      setStatus('Error while playing chime: ' + e.message);
     }
   });
 </script>
